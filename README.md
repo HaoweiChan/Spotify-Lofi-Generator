@@ -2,10 +2,6 @@
 
 A Python application that generates music playlists using music provider APIs (Spotify, Apple Music, etc.) based on specified audio features and checks licensing availability for business use on platforms like YouTube.
 
-## ✅ Status: Fully Implemented and Tested
-
-All core functionality is working, including Spotify API integration, YouTube licensing verification, audio feature-based playlist generation, web API endpoints, CLI interface, and comprehensive error handling.
-
 ## Features
 
 ### 🎵 Playlist Generation
@@ -47,14 +43,22 @@ All core functionality is working, including Spotify API integration, YouTube li
 
 1. **Clone the repository**:
 ```bash
-git clone <repository-url>
+git clone https://github.com/HaoweiChan/Spotify-Lofi-Generator.git
 cd Spotify-Lofi-Generator
 ```
 
 2. **Create a virtual environment** (recommended):
+
+**Using venv:**
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+**Using conda:**
+```bash
+conda create -n spotify-lofi python=3.10
+conda activate spotify-lofi
 ```
 
 3. **Install dependencies**:
@@ -176,6 +180,37 @@ The licensing check will:
 - Show business use recommendations and risk assessments
 
 **Note**: If YouTube API key is not configured, the tool will generate mock licensing data for demonstration purposes.
+
+#### How Licensing Check Works
+
+The licensing verification uses a sophisticated multi-step analysis process:
+
+1. **YouTube Search**: Searches for the track on YouTube using artist and title
+2. **Video Analysis**: Retrieves detailed metadata for up to 10 matching videos
+3. **Risk Assessment**: Analyzes multiple licensing indicators:
+   - **Privacy Status**: Public vs private/unlisted videos
+   - **Embedding Rights**: Whether video can be embedded on other platforms
+   - **Content Type**: Detects official content using title keywords ("official", "music video")
+   - **COPPA Compliance**: Checks for "made for kids" restrictions
+   - **Content ID Claims**: Basic detection (full analysis requires YouTube Partner API)
+
+4. **Risk Scoring Algorithm**:
+   ```
+   Risk Factors:
+   - Not public: +0.3 risk score
+   - Not embeddable: +0.2 risk score  
+   - Official content: +0.4 risk score
+   - Made for kids: +0.1 risk score
+   
+   Risk Levels:
+   - 0.0-0.3: 🟢 Low Risk (generally safe)
+   - 0.4-0.6: 🟡 Medium Risk (review recommended)
+   - 0.7+: 🔴 High Risk (avoid for commercial use)
+   ```
+
+5. **Business Use Assessment**: Determines allowance based on combined risk factors and blocking conditions
+
+**Limitations**: This provides initial screening and risk assessment, but should be part of a broader licensing compliance strategy. Always consult legal professionals for commercial use decisions.
 
 ### Playlist Display
 
