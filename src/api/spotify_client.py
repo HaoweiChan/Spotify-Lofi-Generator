@@ -5,8 +5,9 @@ Provides OAuth 2.0 authentication, track search, audio features, and playlist ma
 
 import base64
 import logging
-from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional
+
 from src.api.base_client import BaseAPIClient, AuthenticationError
 from src.utils.cache_manager import CacheManager
 

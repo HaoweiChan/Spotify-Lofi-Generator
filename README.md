@@ -7,6 +7,7 @@ A Python application that generates music playlists using music provider APIs (S
 ### 🎵 Playlist Generation
 - Generate playlists based on audio features (tempo, energy, valence, etc.)
 - Support for multiple music providers (Spotify, Apple Music)
+- **Create playlists directly on your Spotify account** 🆕
 - Customizable playlist length and diversity settings
 - Genre and mood-based filtering
 - Audio feature similarity matching
@@ -106,7 +107,10 @@ pytest tests/ -v
 ### Spotify API (Required)
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
 2. Create a new app
-3. Copy Client ID and Client Secret
+3. **Important**: Add `http://localhost:8888/callback` to Redirect URIs (required for playlist creation)
+4. Copy Client ID and Client Secret
+
+📖 **For detailed Spotify setup instructions, see [SPOTIFY_SETUP.md](SPOTIFY_SETUP.md)**
 
 ### YouTube Data API (Required for licensing)
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
@@ -121,6 +125,25 @@ pytest tests/ -v
 ## Usage
 
 ### Command Line Interface
+
+#### 🆕 Create Playlists Directly on Spotify
+
+**First, authenticate with Spotify:**
+```bash
+python main.py spotify-auth
+```
+
+**Generate and create playlist on your Spotify account:**
+```bash
+python main.py create-spotify --features '{"energy": 0.8, "valence": 0.6}' --length 20
+```
+
+**Upload existing playlist to Spotify:**
+```bash
+python main.py upload-spotify output/playlists/my_playlist.json
+```
+
+#### Generate Playlists (Save to File)
 
 Generate a playlist with specific audio features:
 
@@ -158,6 +181,53 @@ python main.py check-licensing output/playlists/my_playlist.json
 python main.py check-licensing output/playlists/my_playlist.json --output "my_playlist_licensed.json"
 ```
 
+#### 🆕 Spotify Playlist Creation Commands
+
+**Authentication Management:**
+```bash
+# First time setup - authenticate with Spotify
+python main.py spotify-auth
+
+# Check authentication status
+python main.py spotify-auth --status
+
+# Force re-authentication
+python main.py spotify-auth --reauth
+
+# Logout from Spotify
+python main.py spotify-auth --logout
+```
+
+**Generate and Create on Spotify:**
+```bash
+# Generate energetic playlist and create on Spotify
+python main.py create-spotify --features '{"energy": 0.8, "valence": 0.7}' --length 25
+
+# Create public playlist
+python main.py create-spotify --features '{"energy": 0.5, "valence": 0.6}' --public
+
+# Generate with licensing check
+python main.py create-spotify --features '{"energy": 0.8}' --check-licensing
+
+# Chill/relaxing playlist
+python main.py create-spotify --features '{"energy": 0.3, "valence": 0.6}' --length 30
+```
+
+**Upload Existing Playlists:**
+```bash
+# Upload a saved playlist file to Spotify
+python main.py upload-spotify output/playlists/spotify_playlist_20231201_143022.json
+
+# Upload as public playlist
+python main.py upload-spotify my_playlist.json --public
+
+# Overwrite existing playlist with same name
+python main.py upload-spotify my_playlist.json --overwrite
+
+# Force re-authentication before upload
+python main.py upload-spotify my_playlist.json --reauth
+```
+
 **Note**: For backward compatibility, the old command format still works, but the new subcommand format is recommended.
 
 ### Licensing Check for Existing Playlists
@@ -179,7 +249,7 @@ The licensing check will:
 - Save an updated playlist file with licensing information
 - Show business use recommendations and risk assessments
 
-**Note**: If YouTube API key is not configured, the tool will generate mock licensing data for demonstration purposes.
+**Note**: If YouTube API key is not configured, the licensing check will fail with a clear error message. No mock or fake licensing data will be generated.
 
 #### How Licensing Check Works
 
@@ -211,6 +281,20 @@ The licensing verification uses a sophisticated multi-step analysis process:
 5. **Business Use Assessment**: Determines allowance based on combined risk factors and blocking conditions
 
 **Limitations**: This provides initial screening and risk assessment, but should be part of a broader licensing compliance strategy. Always consult legal professionals for commercial use decisions.
+
+#### Error Handling
+
+The licensing check requires a valid YouTube API key. If not configured, you'll see:
+
+```
+❌ Error: YouTube API key not configured
+📝 Licensing check requires YOUTUBE_API_KEY in .env file
+🔧 Get your API key from: https://console.cloud.google.com/
+💡 Replace 'your_youtube_api_key_here' with your actual API key
+🔍 Current value: 'your_youtube_api_key'
+```
+
+**No fake data**: The tool will never generate mock or placeholder licensing information. If licensing cannot be verified, it will clearly indicate the failure rather than providing misleading data.
 
 ### Playlist Display
 

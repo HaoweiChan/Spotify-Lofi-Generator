@@ -31,7 +31,8 @@ class LicensingChecker:
     async def __aenter__(self):
         """Async context manager entry."""
         await self.cache_manager.connect()
-        if self.settings.YOUTUBE_API_KEY:
+        youtube_key = self.settings.YOUTUBE_API_KEY
+        if youtube_key and youtube_key.strip() not in ["your_youtube_api_key_here", "your_youtube_api_key"]:
             self.youtube_client = YouTubeClient(
                 api_key=self.settings.YOUTUBE_API_KEY,
                 cache_manager=self.cache_manager
@@ -65,13 +66,8 @@ class LicensingChecker:
             except Exception as e:
                 logger.warning(f"Failed to check licensing for track {track.id}: {e}")
                 # Add track with unknown licensing status
-                track.license_info = LicenseInfo(
-                    track_id=track.id,
-                    business_use_allowed=False,
-                    risk_level="unknown",
-                    risk_factors=["Unable to verify licensing"],
-                    recommendation="Manual verification required"
-                )
+                track.license_info = LicenseInfo.create_unknown()
+                track.license_info.source = "error_fallback"
                 updated_tracks.append(track)
                 
         playlist.tracks = updated_tracks
@@ -91,13 +87,7 @@ class LicensingChecker:
             LicenseInfo object with licensing details
         """
         if not self.youtube_client:
-            return LicenseInfo(
-                track_id=track.id,
-                business_use_allowed=False,
-                risk_level="unknown",
-                risk_factors=["YouTube API not configured"],
-                recommendation="Configure YouTube API for licensing verification"
-            )
+            raise ValueError("YouTube API key not configured - cannot check licensing")
             
         # Search for the track on YouTube
         youtube_videos = await self.youtube_client.search_track_on_youtube(
@@ -106,13 +96,10 @@ class LicensingChecker:
         )
         
         if not youtube_videos:
-            return LicenseInfo(
-                track_id=track.id,
-                business_use_allowed=False,
-                risk_level="medium",
-                risk_factors=["Track not found on YouTube"],
-                recommendation="Track may not be widely available - verify licensing independently"
-            )
+            license_info = LicenseInfo.create_unknown()
+            license_info.source = "youtube_not_found"
+            license_info.notes = "Track not found on YouTube - verify licensing independently"
+            return license_info
             
         # Analyze the most relevant video (first result)
         primary_video = youtube_videos[0]
@@ -136,19 +123,12 @@ class LicensingChecker:
         business_use_allowed = self._assess_business_use(licensing_info, additional_risks)
         
         # Create comprehensive license info
-        license_info = LicenseInfo(
-            track_id=track.id,
-            youtube_video_id=primary_video["id"],
-            youtube_title=primary_video["title"],
-            youtube_channel=primary_video["channel_title"],
-            business_use_allowed=business_use_allowed,
-            risk_level=licensing_info["risk_level"],
-            risk_factors=list(set(all_risk_factors)),  # Remove duplicates
-            recommendation=licensing_info["business_use_recommendation"],
-            embeddable=licensing_info["embeddable"],
-            content_id_claims=licensing_info["content_id_claims"],
-            additional_notes=self._generate_additional_notes(licensing_info, youtube_videos)
-        )
+        license_info = LicenseInfo.create_unknown()
+        license_info.source = "youtube_analysis"
+        license_info.notes = self._generate_additional_notes(licensing_info, youtube_videos)
+        license_info.commercial_use_allowed = business_use_allowed
+        license_info.youtube_content_id = licensing_info.get("content_id_claims", False)
+        license_info.confidence_score = 0.8 if licensing_info["risk_level"] != "unknown" else 0.3
         
         return license_info
         
@@ -232,18 +212,18 @@ class LicensingChecker:
                 # Count by business use allowance
                 if license_info.business_use_allowed:
                     safe_count += 1
-                elif license_info.risk_level == "unknown":
+                elif license_info.business_use_status.value == "unknown":
                     unknown_count += 1
                 else:
                     risky_count += 1
                     
-                # Count by risk level
-                risk_level = license_info.risk_level
+                # Count by risk level (map business_use_status to risk levels)
+                risk_level = self._map_business_status_to_risk(license_info.business_use_status)
                 risk_level_counts[risk_level] = risk_level_counts.get(risk_level, 0) + 1
                 
-                # Count common risk factors
-                for factor in license_info.risk_factors:
-                    common_risk_factors[factor] = common_risk_factors.get(factor, 0) + 1
+                # Count common risk factors (use copyright claims as risk factors)
+                for claim in license_info.copyright_claims:
+                    common_risk_factors[claim] = common_risk_factors.get(claim, 0) + 1
             else:
                 unknown_count += 1
                 
@@ -293,11 +273,11 @@ class LicensingChecker:
                     "track_name": track.name,
                     "artist": ", ".join(track.artists),
                     "business_use_allowed": track.license_info.business_use_allowed,
-                    "risk_level": track.license_info.risk_level,
-                    "risk_factors": track.license_info.risk_factors,
-                    "recommendation": track.license_info.recommendation,
-                    "youtube_video_id": track.license_info.youtube_video_id,
-                    "youtube_title": track.license_info.youtube_title
+                    "risk_level": self._map_business_status_to_risk(track.license_info.business_use_status),
+                    "risk_factors": track.license_info.copyright_claims,
+                    "recommendation": track.license_info.licensing_summary,
+                    "youtube_video_id": getattr(track.license_info, 'youtube_video_id', None),
+                    "youtube_title": getattr(track.license_info, 'youtube_title', None)
                 }
                 report["track_details"].append(track_detail)
                 
@@ -332,4 +312,19 @@ class LicensingChecker:
         if summary.get("unknown_status", 0) > 0:
             recommendations.append("Some tracks require manual licensing verification")
             
-        return recommendations 
+        return recommendations
+    
+    def _map_business_status_to_risk(self, business_status) -> str:
+        """Map business use status to risk level."""
+        from src.models.license_info import BusinessUseStatus
+        
+        if business_status == BusinessUseStatus.PROHIBITED:
+            return "high"
+        elif business_status == BusinessUseStatus.RESTRICTED:
+            return "medium"
+        elif business_status == BusinessUseStatus.REQUIRES_LICENSE:
+            return "medium"
+        elif business_status == BusinessUseStatus.ALLOWED:
+            return "low"
+        else:  # UNKNOWN
+            return "unknown" 

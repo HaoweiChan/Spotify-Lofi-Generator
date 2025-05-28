@@ -37,6 +37,7 @@ class Settings:
         )
         self.SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
         self.SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
+        self.SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI", "http://localhost:8888/callback")
         
         # Apple Music API Configuration
         self.apple_music = APIConfig(
@@ -97,7 +98,7 @@ class Settings:
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
         self.log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     
-    def validate(self) -> bool:
+    def validate(self, require_youtube: bool = False) -> bool:
         """Validate that required configuration is present."""
         required_vars = []
         
@@ -105,7 +106,7 @@ class Settings:
             required_vars.append("SPOTIFY_CLIENT_ID")
         if not self.SPOTIFY_CLIENT_SECRET:
             required_vars.append("SPOTIFY_CLIENT_SECRET")
-        if not self.YOUTUBE_API_KEY:
+        if require_youtube and not self.YOUTUBE_API_KEY:
             required_vars.append("YOUTUBE_API_KEY")
         
         if required_vars:

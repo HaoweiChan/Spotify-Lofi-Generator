@@ -16,6 +16,7 @@ from datetime import datetime
 from config.settings import Settings
 from src.services.playlist_generator import PlaylistGenerator
 from src.services.licensing_checker import LicensingChecker
+from src.services.spotify_playlist_service import SpotifyPlaylistService
 
 def run_tests():
     """Run the test suite."""
@@ -168,6 +169,198 @@ async def generate_playlist(args):
     except Exception as e:
         print(f"Error generating playlist: {e}")
 
+async def create_spotify_playlist(args):
+    """Create a playlist directly on user's Spotify account."""
+    # Load playlist from file
+    if not os.path.exists(args.playlist_file):
+        print(f"Error: Playlist file '{args.playlist_file}' not found")
+        return
+    
+    try:
+        # Load existing playlist
+        with open(args.playlist_file, 'r') as f:
+            playlist_data = json.load(f)
+        
+        print(f"🎵 Creating Spotify playlist: {playlist_data.get('name', 'Unknown')}")
+        print(f"📁 Source file: {args.playlist_file}")
+        print(f"🎵 Tracks: {len(playlist_data.get('tracks', []))}")
+        
+        # Convert dict back to Playlist object
+        from src.models.playlist import Playlist
+        from src.models.track import Track
+        from src.models.audio_features import AudioFeatures
+        
+        # Reconstruct playlist object
+        tracks = []
+        for track_data in playlist_data.get('tracks', []):
+            track = Track.from_dict(track_data)
+            tracks.append(track)
+        
+        target_features = None
+        if playlist_data.get('target_audio_features'):
+            target_features = AudioFeatures.from_dict(playlist_data['target_audio_features'])
+        
+        playlist = Playlist(
+            id=playlist_data['id'],
+            name=playlist_data['name'],
+            description=playlist_data['description'],
+            tracks=tracks,
+            target_audio_features=target_features,
+            provider=playlist_data['provider']
+        )
+        
+        # Initialize Spotify service
+        settings = Settings()
+        
+        async with SpotifyPlaylistService(settings) as spotify_service:
+            # Authenticate user
+            if not await spotify_service.authenticate_user(force_reauth=args.reauth):
+                print("❌ Authentication failed. Cannot create playlist.")
+                return
+            
+            # Create playlist on Spotify
+            result = await spotify_service.create_playlist_on_spotify(
+                playlist=playlist,
+                public=args.public,
+                overwrite_existing=args.overwrite
+            )
+            
+            if "error" in result:
+                print(f"❌ {result['error']}")
+                return
+            
+            print(f"\n🎉 Success! Playlist created on Spotify:")
+            print(f"🔗 {result['playlist_url']}")
+            print(f"📊 {result['tracks_added']} tracks added")
+            if result['tracks_failed'] > 0:
+                print(f"⚠️  {result['tracks_failed']} tracks could not be added")
+                
+    except Exception as e:
+        print(f"Error creating Spotify playlist: {e}")
+
+async def generate_and_create_spotify_playlist(args):
+    """Generate a playlist and immediately create it on Spotify."""
+    # First generate the playlist
+    print("🎵 Generating playlist...")
+    
+    # Parse audio features
+    features = {}
+    if args.features:
+        try:
+            features = json.loads(args.features)
+        except json.JSONDecodeError:
+            print("Error: Invalid JSON format for features")
+            return
+    
+    # Initialize services
+    settings = Settings()
+    
+    try:
+        async with PlaylistGenerator(settings) as playlist_generator:
+            # Generate playlist
+            playlist = await playlist_generator.generate_playlist(
+                audio_features=features,
+                length=args.length,
+                provider=args.provider
+            )
+            
+            # Check licensing if requested
+            if args.check_licensing:
+                async with LicensingChecker(settings) as licensing_checker:
+                    print("Checking licensing information...")
+                    playlist = await licensing_checker.check_playlist_licensing(playlist)
+            
+            # Display playlist summary
+            display_playlist_summary(playlist.to_dict())
+            
+            # Create on Spotify if requested
+            if args.provider == "spotify":
+                async with SpotifyPlaylistService(settings) as spotify_service:
+                    # Authenticate user
+                    if not await spotify_service.authenticate_user():
+                        print("❌ Authentication failed. Saving playlist to file only.")
+                        # Save to file as fallback
+                        output_path = get_output_path(args.output, args.provider)
+                        with open(output_path, 'w') as f:
+                            json.dump(playlist.to_dict(), f, indent=2)
+                        print(f"💾 Playlist saved to: {output_path}")
+                        return
+                    
+                    # Create playlist on Spotify
+                    result = await spotify_service.create_playlist_on_spotify(
+                        playlist=playlist,
+                        public=args.public,
+                        overwrite_existing=False
+                    )
+                    
+                    if "error" not in result:
+                        print(f"\n🎉 Success! Playlist created on Spotify:")
+                        print(f"🔗 {result['playlist_url']}")
+                        print(f"📊 {result['tracks_added']} tracks added")
+                        if result['tracks_failed'] > 0:
+                            print(f"⚠️  {result['tracks_failed']} tracks could not be added")
+                    else:
+                        print(f"❌ {result['error']}")
+            else:
+                print("ℹ️  Only Spotify playlists can be created directly on your account")
+            
+            # Also save to file
+            output_path = get_output_path(args.output, args.provider)
+            with open(output_path, 'w') as f:
+                json.dump(playlist.to_dict(), f, indent=2)
+            print(f"\n💾 Playlist also saved to: {output_path}")
+            
+    except Exception as e:
+        print(f"Error generating playlist: {e}")
+
+async def spotify_auth(args):
+    """Manage Spotify authentication."""
+    settings = Settings()
+    
+    try:
+        async with SpotifyPlaylistService(settings) as spotify_service:
+            if args.logout:
+                # Clear authentication
+                spotify_service._clear_cached_auth()
+                print("✅ Logged out from Spotify")
+                return
+            
+            if args.status:
+                # Check authentication status
+                if spotify_service.is_authenticated():
+                    try:
+                        user_info = await spotify_service.get_user_info()
+                        print(f"✅ Authenticated as: {user_info.get('display_name', user_info['id'])}")
+                        print(f"🆔 User ID: {user_info['id']}")
+                        print(f"👥 Followers: {user_info.get('followers', {}).get('total', 'N/A')}")
+                        
+                        # Show some playlists
+                        playlists = await spotify_service.list_user_playlists(limit=5)
+                        if playlists:
+                            print(f"\n📋 Recent playlists:")
+                            for i, playlist in enumerate(playlists[:5], 1):
+                                print(f"  {i}. {playlist['name']} ({playlist['tracks']['total']} tracks)")
+                    except Exception as e:
+                        print(f"❌ Authentication expired or invalid: {e}")
+                        print("💡 Run 'python main.py spotify-auth' to re-authenticate")
+                else:
+                    print("❌ Not authenticated with Spotify")
+                    print("💡 Run 'python main.py spotify-auth' to authenticate")
+                return
+            
+            # Default: authenticate
+            success = await spotify_service.authenticate_user(force_reauth=args.reauth)
+            if success:
+                user_info = await spotify_service.get_user_info()
+                print(f"\n🎉 Successfully authenticated!")
+                print(f"👤 Welcome, {user_info.get('display_name', user_info['id'])}!")
+                print("💡 You can now create playlists directly on your Spotify account")
+            else:
+                print("❌ Authentication failed")
+                
+    except Exception as e:
+        print(f"Error with Spotify authentication: {e}")
+
 async def check_licensing(args):
     """Check licensing for an existing playlist file."""
     if not os.path.exists(args.playlist_file):
@@ -215,24 +408,22 @@ async def check_licensing(args):
         )
         
         # Check licensing
+        youtube_key = settings.YOUTUBE_API_KEY
+        if not youtube_key or youtube_key.strip() in ["your_youtube_api_key_here", "your_youtube_api_key"]:
+            print("❌ Error: YouTube API key not configured")
+            print("📝 Licensing check requires YOUTUBE_API_KEY in .env file")
+            print("🔧 Get your API key from: https://console.cloud.google.com/")
+            print("💡 Replace 'your_youtube_api_key_here' with your actual API key")
+            print(f"🔍 Current value: '{youtube_key}'")
+            return
+        
         try:
             async with LicensingChecker(settings) as licensing_checker:
                 print("\n🔍 Checking licensing information...")
                 licensed_playlist = await licensing_checker.check_playlist_licensing(playlist)
         except Exception as e:
-            print(f"⚠️  Warning: Licensing check failed ({e})")
-            print("📝 Note: YouTube API key may not be configured. Generating mock licensing data...")
-            
-            # Add mock licensing data for demonstration
-            from src.models.license_info import LicenseInfo
-            for track in playlist.tracks:
-                # Create mock license info
-                mock_license = LicenseInfo.create_unknown()
-                mock_license.source = "mock_data"
-                mock_license.confidence_score = 0.1
-                track.add_license_info(mock_license)
-            
-            licensed_playlist = playlist
+            print(f"❌ Error: Licensing check failed: {e}")
+            return
         
         # Display licensing results
         display_licensing_summary(licensed_playlist.to_dict())
@@ -273,7 +464,8 @@ def display_licensing_summary(playlist):
             if license_info:
                 if license_info.get('business_use_allowed', False):
                     licensed_tracks += 1
-                if license_info.get('business_risk_score', 0) > 0.7:
+                risk_score = license_info.get('business_risk_score', float('nan'))
+                if risk_score == risk_score and risk_score > 0.7:  # Check for NaN and high risk
                     high_risk_tracks += 1
         
         print(f"Business Licensed: {licensed_tracks}/{total_tracks} ({licensed_tracks/total_tracks*100:.1f}%)")
@@ -285,11 +477,17 @@ def display_licensing_summary(playlist):
         for i, track in enumerate(tracks[:5], 1):
             license_info = track.get('license_info', {})
             business_use = "✅ Yes" if license_info.get('business_use_allowed', False) else "❌ No"
-            risk_score = license_info.get('business_risk_score', 0)
-            risk_level = "🟢 Low" if risk_score < 0.3 else "🟡 Medium" if risk_score < 0.7 else "🔴 High"
+            risk_score = license_info.get('business_risk_score', float('nan'))
+            
+            if risk_score != risk_score:  # Check for NaN
+                risk_level = "❓ Unknown"
+                risk_display = "N/A"
+            else:
+                risk_level = "🟢 Low" if risk_score < 0.3 else "🟡 Medium" if risk_score < 0.7 else "🔴 High"
+                risk_display = f"{risk_score:.2f}"
             
             print(f"{i:2d}. {track['name']} - {track['artist']}")
-            print(f"    Business Use: {business_use} | Risk: {risk_level} ({risk_score:.2f})")
+            print(f"    Business Use: {business_use} | Risk: {risk_level} ({risk_display})")
         
         if len(tracks) > 5:
             print(f"    ... and {len(tracks) - 5} more tracks")
@@ -310,6 +508,28 @@ def main():
     generate_parser.add_argument('--check-licensing', action='store_true', dest='check_licensing', help='Check business licensing')
     generate_parser.add_argument('--output', type=str, help='Output file path')
     
+    # Generate and create on Spotify command
+    create_parser = subparsers.add_parser('create-spotify', help='Generate playlist and create directly on Spotify')
+    create_parser.add_argument('--features', type=str, help='JSON string of audio features')
+    create_parser.add_argument('--length', type=int, default=20, help='Playlist length (default: 20)')
+    create_parser.add_argument('--provider', type=str, default='spotify', choices=['spotify'], help='Music provider (Spotify only)')
+    create_parser.add_argument('--check-licensing', action='store_true', dest='check_licensing', help='Check business licensing')
+    create_parser.add_argument('--output', type=str, help='Output file path for backup')
+    create_parser.add_argument('--public', action='store_true', help='Make playlist public')
+    
+    # Upload existing playlist to Spotify command
+    upload_parser = subparsers.add_parser('upload-spotify', help='Upload existing playlist file to Spotify')
+    upload_parser.add_argument('playlist_file', type=str, help='Path to playlist JSON file')
+    upload_parser.add_argument('--public', action='store_true', help='Make playlist public')
+    upload_parser.add_argument('--overwrite', action='store_true', help='Overwrite existing playlist with same name')
+    upload_parser.add_argument('--reauth', action='store_true', help='Force re-authentication')
+    
+    # Spotify authentication command
+    auth_parser = subparsers.add_parser('spotify-auth', help='Manage Spotify authentication')
+    auth_parser.add_argument('--status', action='store_true', help='Check authentication status')
+    auth_parser.add_argument('--logout', action='store_true', help='Logout from Spotify')
+    auth_parser.add_argument('--reauth', action='store_true', help='Force re-authentication')
+    
     # Test command
     test_parser = subparsers.add_parser('test', help='Run the test suite')
     
@@ -324,6 +544,12 @@ def main():
     # Handle commands
     if args.command == 'generate':
         asyncio.run(generate_playlist(args))
+    elif args.command == 'create-spotify':
+        asyncio.run(generate_and_create_spotify_playlist(args))
+    elif args.command == 'upload-spotify':
+        asyncio.run(create_spotify_playlist(args))
+    elif args.command == 'spotify-auth':
+        asyncio.run(spotify_auth(args))
     elif args.command == 'test':
         exit_code = run_tests()
         sys.exit(exit_code)
