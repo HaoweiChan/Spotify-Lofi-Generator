@@ -228,8 +228,6 @@ python main.py upload-spotify my_playlist.json --overwrite
 python main.py upload-spotify my_playlist.json --reauth
 ```
 
-**Note**: For backward compatibility, the old command format still works, but the new subcommand format is recommended.
-
 ### Licensing Check for Existing Playlists
 
 You can check licensing information for previously generated playlists without regenerating them:
@@ -329,7 +327,6 @@ Tracks:
 💾 Playlist saved to: output/playlists/spotify_playlist_20250527_211533.json
 📁 Full path: /Users/user/project/output/playlists/spotify_playlist_20250527_211533.json
 ```
-
 ### Licensing Check Output
 
 When checking licensing for existing playlists, you'll see a detailed summary:
