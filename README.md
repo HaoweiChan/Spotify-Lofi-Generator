@@ -1,4 +1,8 @@
-# Music Playlist Generator with Licensing Checker
+# 🎵 VibeEngine
+### *AI-Powered Music Playlist Generator with Business Licensing*
+
+<div align="center">
+![VibeEngine Hero](assets/images/vibeengine-hero.png)
 
 A Python application that generates music playlists using music provider APIs (Spotify, Apple Music, etc.) based on specified audio features and checks licensing availability for business use on platforms like YouTube.
 
