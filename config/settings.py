@@ -38,6 +38,7 @@ class Settings:
         self.SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
         self.SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET")
         self.SPOTIFY_REDIRECT_URI = os.getenv("SPOTIFY_REDIRECT_URI", "http://localhost:8888/callback")
+        self.SPOTIFY_USER_ACCESS_TOKEN = os.getenv("SPOTIFY_USER_ACCESS_TOKEN")
         
         # Apple Music API Configuration
         self.apple_music = APIConfig(
@@ -113,6 +114,18 @@ class Settings:
             raise ValueError(f"Missing required environment variables: {', '.join(required_vars)}")
         
         return True
+    
+    def has_spotify_user_token(self) -> bool:
+        """Check if Spotify user access token is present."""
+        return bool(self.SPOTIFY_USER_ACCESS_TOKEN and self.SPOTIFY_USER_ACCESS_TOKEN.strip())
+    
+    def get_spotify_auth_requirements(self) -> Dict[str, bool]:
+        """Get Spotify authentication requirements status."""
+        return {
+            "client_credentials": bool(self.SPOTIFY_CLIENT_ID and self.SPOTIFY_CLIENT_SECRET),
+            "user_token": self.has_spotify_user_token(),
+            "oauth_required": not self.has_spotify_user_token()
+        }
     
     def get_provider_config(self, provider: str) -> APIConfig:
         """Get configuration for a specific music provider."""
