@@ -1,565 +1,223 @@
-# 🎵 VibeEngine
+# VibeEngine
 ### *AI-Powered Music Playlist Generator with Business Licensing*
 
 <div align="center">
+
 ![VibeEngine Hero](assets/images/vibeengine-hero.png)
 
-A Python application that generates music playlists using music provider APIs (Spotify, Apple Music, etc.) based on specified audio features and checks licensing availability for business use on platforms like YouTube.
+![Python](https://img.shields.io/badge/python-v3.10+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)
+
+**Create perfect playlists using AI-driven audio feature matching**  
+*Generate vibes, not just music*
+
+[Quick Start](#quick-start) • [Features](#features) • [API Docs](#api-reference) • [Examples](#examples)
+
+</div>
+
+---
+
+## What is VibeEngine?
+
+VibeEngine is an intelligent music curation platform that goes beyond simple playlist generation. Using advanced audio feature analysis and AI-powered matching algorithms, it creates perfectly curated playlists based on **mood**, **energy**, **tempo**, and **musical characteristics**.
+
+**Perfect for:**
+- **Content Creators** - Get business-licensed music for videos
+- **Businesses** - Commercial-safe background music
+- **Music Lovers** - Discover new tracks that match your vibe
+- **Developers** - Integrate smart playlist generation
 
 ## Features
 
-### 🎵 Playlist Generation
-- Generate playlists based on audio features (tempo, energy, valence, etc.)
-- Support for multiple music providers (Spotify, Apple Music)
-- **Create playlists directly on your Spotify account** 🆕
-- Customizable playlist length and diversity settings
-- Genre and mood-based filtering
-- Audio feature similarity matching
-- Cross-provider audio feature normalization
+### **Smart Playlist Generation**
+- **AI-Powered Matching** - Advanced audio feature analysis
+- **Vibe Control** - Fine-tune energy, mood, tempo, and danceability
+- **Multi-Provider** - Spotify, Apple Music support
+- **Direct Integration** - Create playlists directly on your Spotify account
 
-### 📋 Licensing Verification
-- Check YouTube Content ID for business use licensing
-- Verify Creative Commons licensing
-- Check for copyright claims and monetization restrictions
-- Generate licensing reports for business compliance
-- Risk assessment for commercial use
+### **Business Licensing Verification**
+- **Commercial Compliance** - YouTube Content ID verification
+- **Risk Assessment** - Intelligent licensing risk scoring
+- **Detailed Reports** - Comprehensive licensing analysis
+- **Business-Safe** - Perfect for commercial projects
 
-### 🎛️ Audio Feature Matching
-- Tempo (BPM) matching with tolerance ranges
-- Energy level matching (0.0 - 1.0 scale)
-- Valence (musical positivity) matching
-- Danceability and acousticness filtering
-- Key and mode preferences
-- Weighted similarity scoring between tracks
-
-### 🔊 Advanced Audio Analysis (Optional)
-- File-based audio analysis using librosa
-- Audio fingerprinting for similarity matching
-- Real-time feature extraction from audio files
-- Support for multiple audio formats
-
-## Prerequisites
-
-- Python 3.10 or higher
-- pip package manager
-- Git (for cloning the repository)
-
-## Installation
-
-1. **Clone the repository**:
-```bash
-git clone https://github.com/HaoweiChan/Spotify-Lofi-Generator.git
-cd Spotify-Lofi-Generator
+### **Advanced Audio Features**
+```
+Energy      ████████░░ 0.8    Valence     ██████░░░░ 0.6
+Tempo       ███████░░░ 120    Dance       █████████░ 0.9
+Acoustic    ██░░░░░░░░ 0.2    Instrum.    ████░░░░░░ 0.4
 ```
 
-2. **Create a virtual environment** (recommended):
+### **Developer-Friendly**
+- **REST API** - Full web API with OpenAPI docs
+- **Async/Await** - High-performance async operations
+- **Smart Caching** - Redis-powered with intelligent fallbacks
+- **Type Safety** - Full type hints and validation
 
-**Using venv:**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+## Quick Start
 
-**Using conda:**
+### Installation
 ```bash
-conda create -n spotify-lofi python=3.10
-conda activate spotify-lofi
-```
-
-3. **Install dependencies**:
-```bash
+git clone https://github.com/yourusername/VibeEngine.git
+cd VibeEngine
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. **Set up environment variables**:
+### Configuration
 ```bash
 cp env.example .env
+# Edit .env with your API keys
 ```
 
-Edit `.env` with your API credentials:
-```env
-# Spotify API (Required)
-SPOTIFY_CLIENT_ID=your_spotify_client_id_here
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
-
-# YouTube Data API (Required for licensing checks)
-YOUTUBE_API_KEY=your_youtube_api_key_here
-
-# Apple Music API (Optional)
-APPLE_MUSIC_KEY_ID=your_apple_music_key_id
-APPLE_MUSIC_TEAM_ID=your_apple_music_team_id
-APPLE_MUSIC_PRIVATE_KEY=your_apple_music_private_key
-
-# Redis (Optional - will use in-memory cache if not provided)
-REDIS_URL=redis://localhost:6379
-```
-
-5. **Verify installation**:
+### Generate Your First Playlist
 ```bash
-# Run comprehensive setup check
-python setup_env.py
-
-# Run the test suite
-python main.py test
-
-# Or run tests directly with pytest
-pytest tests/ -v
-```
-
-## Getting API Keys
-
-### Spotify API (Required)
-1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
-2. Create a new app
-3. **Important**: Add `http://localhost:8888/callback` to Redirect URIs (required for playlist creation)
-4. Copy Client ID and Client Secret
-
-📖 **For detailed Spotify setup instructions, see [SPOTIFY_SETUP.md](SPOTIFY_SETUP.md)**
-
-### YouTube Data API (Required for licensing)
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Enable YouTube Data API v3
-3. Create credentials (API Key)
-
-### Apple Music API (Optional)
-1. Join [Apple Developer Program](https://developer.apple.com/programs/)
-2. Create MusicKit identifier
-3. Generate private key
-
-## Usage
-
-### Command Line Interface
-
-#### 🆕 Create Playlists Directly on Spotify
-
-**First, authenticate with Spotify:**
-```bash
-python main.py spotify-auth
-```
-
-**Generate and create playlist on your Spotify account:**
-```bash
-python main.py create-spotify --features '{"energy": 0.8, "valence": 0.6}' --length 20
-```
-
-**Upload existing playlist to Spotify:**
-```bash
-python main.py upload-spotify output/playlists/my_playlist.json
-```
-
-#### Generate Playlists (Save to File)
-
-Generate a playlist with specific audio features:
-
-```bash
-python main.py generate --features '{"energy": 0.8, "valence": 0.6, "tempo": 120}' --length 20 --provider spotify --check-licensing
-```
-
-**Command Variations**:
-```bash
-# Basic playlist generation (auto-saves to output/playlists/)
-python main.py generate --features '{"energy": 0.8, "valence": 0.6}' --length 10 --provider spotify
-
-# With licensing check
-python main.py generate --features '{"energy": 0.8, "valence": 0.6, "tempo": 120}' --length 20 --provider spotify --check-licensing
-
-# Save to custom filename (still goes to output/playlists/)
-python main.py generate --features '{"energy": 0.3, "valence": 0.7}' --length 15 --provider spotify --output "chill_vibes.json"
-
-# Low energy, sad playlist
-python main.py generate --features '{"energy": 0.2, "valence": 0.3}' --length 15 --provider spotify --output "sad_playlist.json"
-
-# Apple Music provider
-python main.py generate --features '{"energy": 0.8, "valence": 0.6}' --length 20 --provider apple_music
-
-# Complex audio features
-python main.py generate --features '{"energy": 0.8, "valence": 0.6, "tempo": 120, "danceability": 0.9, "acousticness": 0.2}' --length 25 --provider spotify --check-licensing
-
-# Run tests
-python main.py test
-
-# Check licensing for existing playlist
-python main.py check-licensing output/playlists/my_playlist.json
-
-# Check licensing with custom output filename
-python main.py check-licensing output/playlists/my_playlist.json --output "my_playlist_licensed.json"
-```
-
-#### 🆕 Spotify Playlist Creation Commands
-
-**Authentication Management:**
-```bash
-# First time setup - authenticate with Spotify
-python main.py spotify-auth
-
-# Check authentication status
-python main.py spotify-auth --status
-
-# Force re-authentication
-python main.py spotify-auth --reauth
-
-# Logout from Spotify
-python main.py spotify-auth --logout
-```
-
-**Generate and Create on Spotify:**
-```bash
-# Generate energetic playlist and create on Spotify
+# Generate an energetic, happy playlist
 python main.py create-spotify --features '{"energy": 0.8, "valence": 0.7}' --length 25
 
-# Create public playlist
-python main.py create-spotify --features '{"energy": 0.5, "valence": 0.6}' --public
-
-# Generate with licensing check
-python main.py create-spotify --features '{"energy": 0.8}' --check-licensing
-
-# Chill/relaxing playlist
-python main.py create-spotify --features '{"energy": 0.3, "valence": 0.6}' --length 30
+# Create a chill, relaxing vibe
+python main.py create-spotify --features '{"energy": 0.3, "valence": 0.6}' --length 20
 ```
 
-**Upload Existing Playlists:**
+## Examples
+
+### Morning Energy Boost
 ```bash
-# Upload a saved playlist file to Spotify
-python main.py upload-spotify output/playlists/spotify_playlist_20231201_143022.json
-
-# Upload as public playlist
-python main.py upload-spotify my_playlist.json --public
-
-# Overwrite existing playlist with same name
-python main.py upload-spotify my_playlist.json --overwrite
-
-# Force re-authentication before upload
-python main.py upload-spotify my_playlist.json --reauth
+python main.py create-spotify \
+  --features '{"energy": 0.9, "valence": 0.8, "tempo": 130}' \
+  --length 20
 ```
 
-### Licensing Check for Existing Playlists
-
-You can check licensing information for previously generated playlists without regenerating them:
-
+### Late Night Study Session
 ```bash
-# Check licensing for an existing playlist
-python main.py check-licensing output/playlists/my_playlist.json
-
-# Save licensed version with custom filename
-python main.py check-licensing output/playlists/my_playlist.json --output "business_approved_playlist.json"
+python main.py generate \
+  --features '{"energy": 0.2, "valence": 0.4, "acousticness": 0.8}' \
+  --length 30 --output "focus_session.json"
 ```
 
-The licensing check will:
-- Load the existing playlist from the JSON file
-- Check each track's licensing status via YouTube API
-- Display a comprehensive licensing summary
-- Save an updated playlist file with licensing information
-- Show business use recommendations and risk assessments
-
-**Note**: If YouTube API key is not configured, the licensing check will fail with a clear error message. No mock or fake licensing data will be generated.
-
-#### How Licensing Check Works
-
-The licensing verification uses a sophisticated multi-step analysis process:
-
-1. **YouTube Search**: Searches for the track on YouTube using artist and title
-2. **Video Analysis**: Retrieves detailed metadata for up to 10 matching videos
-3. **Risk Assessment**: Analyzes multiple licensing indicators:
-   - **Privacy Status**: Public vs private/unlisted videos
-   - **Embedding Rights**: Whether video can be embedded on other platforms
-   - **Content Type**: Detects official content using title keywords ("official", "music video")
-   - **COPPA Compliance**: Checks for "made for kids" restrictions
-   - **Content ID Claims**: Basic detection (full analysis requires YouTube Partner API)
-
-4. **Risk Scoring Algorithm**:
-   ```
-   Risk Factors:
-   - Not public: +0.3 risk score
-   - Not embeddable: +0.2 risk score  
-   - Official content: +0.4 risk score
-   - Made for kids: +0.1 risk score
-   
-   Risk Levels:
-   - 0.0-0.3: 🟢 Low Risk (generally safe)
-   - 0.4-0.6: 🟡 Medium Risk (review recommended)
-   - 0.7+: 🔴 High Risk (avoid for commercial use)
-   ```
-
-5. **Business Use Assessment**: Determines allowance based on combined risk factors and blocking conditions
-
-**Limitations**: This provides initial screening and risk assessment, but should be part of a broader licensing compliance strategy. Always consult legal professionals for commercial use decisions.
-
-#### Error Handling
-
-The licensing check requires a valid YouTube API key. If not configured, you'll see:
-
-```
-❌ Error: YouTube API key not configured
-📝 Licensing check requires YOUTUBE_API_KEY in .env file
-🔧 Get your API key from: https://console.cloud.google.com/
-💡 Replace 'your_youtube_api_key_here' with your actual API key
-🔍 Current value: 'your_youtube_api_key'
+### Business-Licensed Playlist
+```bash
+python main.py create-spotify \
+  --features '{"energy": 0.6, "valence": 0.7}' \
+  --check-licensing --length 25
 ```
 
-**No fake data**: The tool will never generate mock or placeholder licensing information. If licensing cannot be verified, it will clearly indicate the failure rather than providing misleading data.
+## Audio Feature Guide
 
-### Playlist Display
+| Feature | Range | Description | Examples |
+|---------|-------|-------------|----------|
+| **Energy** | 0.0-1.0 | Musical intensity | 0.9 = Rock, 0.2 = Ambient |
+| **Valence** | 0.0-1.0 | Musical positivity | 0.9 = Happy, 0.1 = Sad |
+| **Tempo** | 50-200 | Beats per minute | 120 = Pop, 80 = Ballad |
+| **Danceability** | 0.0-1.0 | Rhythm strength | 0.9 = EDM, 0.3 = Classical |
+| **Acousticness** | 0.0-1.0 | Acoustic vs Electronic | 0.9 = Folk, 0.1 = Techno |
 
-When generating playlists, the application now displays a comprehensive summary including:
+## API Keys Setup
 
-- **Playlist Information**: Name, description, total tracks, and provider
-- **Target Audio Features**: The requested audio characteristics
-- **Track Listing**: First 10 tracks with details (name, artist, album, duration, popularity)
-- **File Location**: Automatic saving to `output/playlists/` with timestamp or custom filename
+<details>
+<summary><strong>Spotify API (Required)</strong></summary>
 
-Example output:
-```
-============================================================
-🎵 Playlist Generated: Feel Good Mix
-============================================================
-Description: Generated playlist based on audio features: | Energy: 0.7 | Valence: 0.8
-Total Tracks: 5
-Provider: Spotify
+1. Visit [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Create new app
+3. Add `http://localhost:8888/callback` to Redirect URIs
+4. Copy Client ID & Secret to `.env`
 
-Target Audio Features:
-  Energy: 0.7
-  Valence: 0.8
+**Detailed setup:** [SPOTIFY_SETUP.md](SPOTIFY_SETUP.md)
+</details>
 
-Tracks:
-------------------------------------------------------------
- 1. Happy Together - The Turtles
-    Album: Happy Together | Duration: 2:56 | Popularity: 78
- 2. Happy Face - Treaty Oak Revival
-    Album: Happy Face | Duration: 3:22 | Popularity: 74
-------------------------------------------------------------
+<details>
+<summary><strong>YouTube API (For Licensing)</strong></summary>
 
-💾 Playlist saved to: output/playlists/spotify_playlist_20250527_211533.json
-📁 Full path: /Users/user/project/output/playlists/spotify_playlist_20250527_211533.json
-```
-### Licensing Check Output
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Enable YouTube Data API v3
+3. Create API Key
+4. Add to `.env` file
+</details>
 
-When checking licensing for existing playlists, you'll see a detailed summary:
+## Web API
 
-```
-============================================================
-📋 Licensing Summary
-============================================================
-Total Tracks: 7
-Business Licensed: 2/7 (28.6%)
-High Risk Tracks: 1/7 (14.3%)
-
-Track Licensing Details:
-------------------------------------------------------------
- 1. Happy Song - Artist Name
-    Business Use: ✅ Yes | Risk: 🟢 Low (0.15)
- 2. Copyrighted Track - Major Label
-    Business Use: ❌ No | Risk: 🔴 High (0.85)
-------------------------------------------------------------
-
-💾 Licensed playlist saved to: output/playlists/playlist_licensed.json
-```
-
-**Risk Levels:**
-- 🟢 **Low Risk (0.0-0.3)**: Generally safe for business use
-- 🟡 **Medium Risk (0.3-0.7)**: Review recommended, may require licensing
-- 🔴 **High Risk (0.7-1.0)**: Avoid for commercial use, likely copyrighted
-
-### Web API
-
-Start the web server:
+Start the API server:
 ```bash
 python app.py
 ```
 
-The API will be available at `http://localhost:8000`
-
-#### API Endpoints
-
-- `POST /generate-playlist` - Generate a playlist
-- `POST /check-licensing` - Check licensing for a track
-- `GET /providers` - List supported providers
-- `GET /audio-features/schema` - Get audio features schema
-- `GET /health` - Health check endpoint
-
-#### Example API Request
-
+### Example API Call
 ```bash
 curl -X POST "http://localhost:8000/generate-playlist" \
   -H "Content-Type: application/json" \
   -d '{
-    "audio_features": {
-      "energy": 0.8,
-      "valence": 0.6,
-      "danceability": 0.7,
-      "tempo": 120
-    },
+    "audio_features": {"energy": 0.8, "valence": 0.6},
     "length": 20,
-    "provider": "spotify",
-    "check_licensing": true
+    "provider": "spotify"
   }'
 ```
 
-## Audio Features
+## Licensing Intelligence
 
-The system uses standardized audio features (0.0-1.0 scale):
+VibeEngine provides sophisticated licensing analysis:
 
-- **Energy**: Musical intensity and power
-- **Valence**: Musical positivity/happiness  
-- **Danceability**: Rhythm and beat strength
-- **Acousticness**: Acoustic vs electronic content
-- **Instrumentalness**: Vocal vs instrumental content
-- **Tempo**: Beats per minute (50-200 BPM)
-- **Loudness**: Overall loudness in dB (-60 to 0)
-- **Key**: Musical key (0-11, C=0, C#=1, etc.)
-- **Mode**: Major (1) or Minor (0)
+```
+============================================================
+Licensing Summary
+============================================================
+Total Tracks: 25
+Business Licensed: 18/25 (72%)
+Medium Risk: 5/25 (20%)
+High Risk: 2/25 (8%)
+
+Recommendation: 72% tracks are safe for commercial use
+```
+
+**Risk Levels:**
+- **Low Risk (0.0-0.3)** - Safe for business use
+- **Medium Risk (0.3-0.7)** - Review recommended  
+- **High Risk (0.7-1.0)** - Avoid for commercial use
 
 ## Architecture
 
-### Core Components
-
-- **API Clients** (`src/api/`): Spotify, Apple Music, and YouTube integrations
-- **Services** (`src/services/`): Playlist generation, licensing verification, audio analysis
-- **Models** (`src/models/`): Data structures for tracks, playlists, and audio features
-- **Utilities** (`src/utils/`): Caching, rate limiting, validation, and audio analysis
-
-### Key Features
-
-- **Async/Await Support**: Non-blocking API calls for better performance
-- **Caching & Rate Limiting**: Redis-based caching with automatic fallback
-- **Cross-Provider Normalization**: Standardized audio features across providers
-- **Comprehensive Error Handling**: Graceful degradation and retry logic
-- **Extensible Design**: Easy to add new music providers
-
-## Project Structure
-
 ```
-├── main.py                     # CLI entry point with test runner
-├── app.py                      # Web API entry point
-├── setup_env.py               # Environment verification script
-├── output/                     # Generated files and results
-│   ├── playlists/             # Generated playlist JSON files
-│   ├── reports/               # Licensing and analysis reports
-│   └── cache/                 # Cached API responses (optional)
-├── config/
-│   ├── settings.py            # Application configuration
-│   └── api_keys.py            # API key management
-├── src/
-│   ├── models/                # Data models
-│   │   ├── track.py          # Track model
-│   │   ├── playlist.py       # Playlist model
-│   │   ├── audio_features.py # Audio features model
-│   │   └── license_info.py   # License information model
-│   ├── api/                   # API clients
-│   │   ├── base_client.py    # Base API client
-│   │   ├── spotify_client.py # Spotify integration
-│   │   ├── apple_music_client.py # Apple Music integration
-│   │   └── youtube_client.py # YouTube integration
-│   ├── services/              # Business logic
-│   │   ├── playlist_generator.py # Main playlist generation
-│   │   ├── licensing_checker.py  # Licensing verification
-│   │   └── audio_features.py     # Audio analysis service
-│   └── utils/                 # Utilities
-│       ├── audio_analyzer.py # File-based audio analysis
-│       ├── cache_manager.py  # Caching utilities
-│       ├── rate_limiter.py   # Rate limiting
-│       └── validators.py     # Input validation
-├── tests/                     # Test suite
-│   ├── conftest.py           # Pytest configuration and fixtures
-│   ├── integration/          # Integration tests
-│   │   ├── test_implementation.py # Core functionality tests
-│   │   └── test_cli_interface.py  # CLI interface tests
-│   └── unit/                 # Unit tests
-│       ├── test_audio_features.py # AudioFeatures model tests
-│       ├── test_track.py     # Track model tests
-│       ├── test_validators.py # Validation utility tests
-│       └── test_rate_limiter.py # Rate limiter utility tests
-├── requirements.txt           # Python dependencies
-├── env.example               # Environment variables template
-└── README.md                 # This file
+VibeEngine
+├── Core Engine
+│   ├── Audio Feature Analysis
+│   ├── Similarity Matching
+│   └── Playlist Generation
+├── API Integrations
+│   ├── Spotify Client
+│   ├── Apple Music Client
+│   └── YouTube Licensing
+├── Licensing Engine
+│   ├── Risk Assessment
+│   ├── Content ID Verification
+│   └── Compliance Reports
+└── Interfaces
+    ├── CLI Commands
+    ├── REST API
+    └── Web Dashboard
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-**Import Errors**:
-- Ensure virtual environment is activated
-- Reinstall dependencies: `pip install -r requirements.txt`
-
-**Authentication Errors**:
-- Verify API credentials in `.env` file
-- Check Spotify app configuration
-
-**Redis Connection Errors**:
-- Redis is optional - app uses memory caching as fallback
-- Install Redis: `brew install redis` (macOS) or `sudo apt-get install redis-server` (Ubuntu)
-
-**Audio Analysis Issues**:
-- librosa should work out of the box
-- essentia is optional and complex to install
-
-### API Rate Limits
-
-- **Spotify**: 100 requests per minute
-- **Apple Music**: 1000 requests per minute  
-- **YouTube**: 10,000 requests per minute
-
-The application includes built-in rate limiting and caching to stay within these limits.
-
-## Licensing Compliance
-
-The system provides comprehensive licensing analysis:
-
-- **Business Use Status**: Clear indication of commercial use permissions
-- **Risk Assessment**: Calculated risk scores for business use
-- **Compliance Reports**: Detailed licensing reports for playlists
-- **Recommendations**: Actionable suggestions for licensing compliance
-
-### Risk Levels
-
-- **Low Risk (0.0-0.3)**: Generally safe for business use
-- **Medium Risk (0.3-0.7)**: Review recommended
-- **High Risk (0.7-1.0)**: Avoid for commercial use
-
-## Development
-
-### Running Tests
+## Testing
 
 ```bash
-# Run the complete test suite
+# Run complete test suite
 python main.py test
 
-# Run tests with pytest directly
-pytest tests/ -v
-
-# Run specific test categories
-pytest tests/integration/ -v  # Integration tests only
-pytest tests/unit/ -v         # Unit tests only
+# Run specific tests
+pytest tests/integration/ -v
+pytest tests/unit/ -v
 ```
 
-### Code Formatting
+## Roadmap
 
-```bash
-black src/ tests/
-flake8 src/ tests/
-mypy src/
-```
-
-### Adding New Music Providers
-
-1. Create a new client in `src/api/` inheriting from `BaseClient`
-2. Implement required methods for authentication and track search
-3. Add provider configuration to `settings.py`
-4. Update the playlist generator service
-5. Add tests for the new provider
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+- [ ] Web Dashboard UI
+- [ ] ML-Based Recommendation Engine
+- [ ] Mobile App
+- [ ] Playlist Sharing Platform
 
 ## Disclaimer
 
-This tool provides licensing information for educational and informational purposes only. Always consult with legal professionals for commercial use decisions. The accuracy of licensing information cannot be guaranteed.
+VibeEngine provides licensing information for educational purposes. Always consult legal professionals for commercial use decisions. Licensing accuracy cannot be guaranteed.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
