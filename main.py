@@ -213,10 +213,28 @@ async def create_spotify_playlist(args):
         settings = Settings()
         
         async with SpotifyPlaylistService(settings) as spotify_service:
-            # Authenticate user
-            if not await spotify_service.authenticate_user(force_reauth=args.reauth):
-                print("❌ Authentication failed. Cannot create playlist.")
-                return
+            # Check for existing token first
+            auth_status = settings.get_spotify_auth_requirements()
+            authenticated = False
+            
+            if auth_status["user_token"]:
+                print("🔑 Using existing Spotify user access token")
+                try:
+                    # Test token with a simple API call
+                    import spotipy
+                    sp = spotipy.Spotify(auth=settings.SPOTIFY_USER_ACCESS_TOKEN)
+                    user_info = sp.current_user()
+                    print(f"✅ Token valid for: {user_info.get('display_name', user_info['id'])}")
+                    authenticated = True
+                except Exception as e:
+                    print(f"⚠️  Existing token invalid: {e}")
+                    print("🔄 Falling back to OAuth authentication...")
+            
+            if not authenticated:
+                # Authenticate user via OAuth
+                if not await spotify_service.authenticate_user(force_reauth=args.reauth):
+                    print("❌ Authentication failed. Cannot create playlist.")
+                    return
             
             # Create playlist on Spotify
             result = await spotify_service.create_playlist_on_spotify(
@@ -276,15 +294,33 @@ async def generate_and_create_spotify_playlist(args):
             # Create on Spotify if requested
             if args.provider == "spotify":
                 async with SpotifyPlaylistService(settings) as spotify_service:
-                    # Authenticate user
-                    if not await spotify_service.authenticate_user():
-                        print("❌ Authentication failed. Saving playlist to file only.")
-                        # Save to file as fallback
-                        output_path = get_output_path(args.output, args.provider)
-                        with open(output_path, 'w') as f:
-                            json.dump(playlist.to_dict(), f, indent=2)
-                        print(f"💾 Playlist saved to: {output_path}")
-                        return
+                    # Check for existing token first
+                    auth_status = settings.get_spotify_auth_requirements()
+                    authenticated = False
+                    
+                    if auth_status["user_token"]:
+                        print("🔑 Using existing Spotify user access token")
+                        try:
+                            # Test token with a simple API call
+                            import spotipy
+                            sp = spotipy.Spotify(auth=settings.SPOTIFY_USER_ACCESS_TOKEN)
+                            user_info = sp.current_user()
+                            print(f"✅ Token valid for: {user_info.get('display_name', user_info['id'])}")
+                            authenticated = True
+                        except Exception as e:
+                            print(f"⚠️  Existing token invalid: {e}")
+                            print("🔄 Falling back to OAuth authentication...")
+                    
+                    if not authenticated:
+                        # Authenticate user via OAuth
+                        if not await spotify_service.authenticate_user():
+                            print("❌ Authentication failed. Saving playlist to file only.")
+                            # Save to file as fallback
+                            output_path = get_output_path(args.output, args.provider)
+                            with open(output_path, 'w') as f:
+                                json.dump(playlist.to_dict(), f, indent=2)
+                            print(f"💾 Playlist saved to: {output_path}")
+                            return
                     
                     # Create playlist on Spotify
                     result = await spotify_service.create_playlist_on_spotify(
@@ -327,10 +363,41 @@ async def spotify_auth(args):
             
             if args.status:
                 # Check authentication status
+                auth_status = settings.get_spotify_auth_requirements()
+                
+                if auth_status["user_token"]:
+                    print("🔑 Found existing Spotify user access token")
+                    # Try to use existing token
+                    try:
+                        # Test the token by making a simple API call
+                        import spotipy
+                        sp = spotipy.Spotify(auth=settings.SPOTIFY_USER_ACCESS_TOKEN)
+                        user_info = sp.current_user()
+                        
+                        print(f"✅ Token is valid! Authenticated as: {user_info.get('display_name', user_info['id'])}")
+                        print(f"🆔 User ID: {user_info['id']}")
+                        print(f"👥 Followers: {user_info.get('followers', {}).get('total', 'N/A')}")
+                        
+                        # Show some playlists
+                        playlists_response = sp.current_user_playlists(limit=5)
+                        playlists = playlists_response.get('items', [])
+                        if playlists:
+                            print(f"\n📋 Recent playlists:")
+                            for i, playlist in enumerate(playlists[:5], 1):
+                                print(f"  {i}. {playlist['name']} ({playlist['tracks']['total']} tracks)")
+                        
+                        print(f"\n💡 Using existing token from SPOTIFY_USER_ACCESS_TOKEN")
+                        return
+                        
+                    except Exception as e:
+                        print(f"❌ Existing token is invalid or expired: {e}")
+                        print("💡 Will need to re-authenticate")
+                
+                # Fall back to checking OAuth-based authentication
                 if spotify_service.is_authenticated():
                     try:
                         user_info = await spotify_service.get_user_info()
-                        print(f"✅ Authenticated as: {user_info.get('display_name', user_info['id'])}")
+                        print(f"✅ Authenticated via OAuth as: {user_info.get('display_name', user_info['id'])}")
                         print(f"🆔 User ID: {user_info['id']}")
                         print(f"👥 Followers: {user_info.get('followers', {}).get('total', 'N/A')}")
                         
@@ -341,20 +408,49 @@ async def spotify_auth(args):
                             for i, playlist in enumerate(playlists[:5], 1):
                                 print(f"  {i}. {playlist['name']} ({playlist['tracks']['total']} tracks)")
                     except Exception as e:
-                        print(f"❌ Authentication expired or invalid: {e}")
+                        print(f"❌ OAuth authentication expired or invalid: {e}")
                         print("💡 Run 'python main.py spotify-auth' to re-authenticate")
                 else:
                     print("❌ Not authenticated with Spotify")
                     print("💡 Run 'python main.py spotify-auth' to authenticate")
                 return
             
-            # Default: authenticate
+            # Check for existing token before starting OAuth
+            auth_status = settings.get_spotify_auth_requirements()
+            
+            if auth_status["user_token"] and not args.reauth:
+                print("🔑 Found existing Spotify user access token")
+                try:
+                    # Test the token
+                    import spotipy
+                    sp = spotipy.Spotify(auth=settings.SPOTIFY_USER_ACCESS_TOKEN)
+                    user_info = sp.current_user()
+                    
+                    print(f"✅ Token is valid! Already authenticated as: {user_info.get('display_name', user_info['id'])}")
+                    print("💡 Use --reauth flag to force re-authentication")
+                    print("💡 Use --status to see detailed authentication info")
+                    return
+                    
+                except Exception as e:
+                    print(f"⚠️  Existing token is invalid or expired: {e}")
+                    print("🔄 Proceeding with OAuth authentication...")
+            elif not auth_status["client_credentials"]:
+                print("❌ Missing Spotify client credentials")
+                print("💡 Set SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env file")
+                return
+            
+            # Default: authenticate via OAuth
             success = await spotify_service.authenticate_user(force_reauth=args.reauth)
             if success:
                 user_info = await spotify_service.get_user_info()
-                print(f"\n🎉 Successfully authenticated!")
+                print(f"\n🎉 Successfully authenticated via OAuth!")
                 print(f"👤 Welcome, {user_info.get('display_name', user_info['id'])}!")
                 print("💡 You can now create playlists directly on your Spotify account")
+                
+                # Suggest adding token to .env for future use
+                print(f"\n💡 Tip: To skip OAuth in the future, you can save your access token:")
+                print(f"   Add this to your .env file:")
+                print(f"   SPOTIFY_USER_ACCESS_TOKEN=<your_token>")
             else:
                 print("❌ Authentication failed")
                 
